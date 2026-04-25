@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 
+import java.math.BigInteger;
 import java.util.List;
-import java.util.Optional;
 
 public interface FactorialResultRepository extends JpaRepository<FactorialResult, Long> {
 
@@ -31,11 +31,17 @@ public interface FactorialResultRepository extends JpaRepository<FactorialResult
             """)
     void markAsProcessing(List<Long> ids);
 
-    @Query("SELECT fr FROM FactorialResult fr WHERE fr.id = :id")
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<FactorialResult> findByIdForUpdate(Long id);
+    @Modifying
+    @Query("""
+            UPDATE FactorialResult fr SET fr.status = 'ERROR' WHERE fr.id = :id
+            """)
+    void markAsError(Long id);
 
     @Modifying
-    @Query("UPDATE FactorialResult fr SET fr.status = 'ERROR' WHERE fr.id = :id")
-    void markAsError(Long id);
+    @Query("""
+            UPDATE FactorialResult fr
+            SET fr.status = 'DONE', fr.factorial = :result, fr.worker = :worker
+            WHERE fr.id = :id
+            """)
+    void markAsDone(Long id, BigInteger result, String worker);
 }

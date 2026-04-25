@@ -35,10 +35,7 @@ public class FactorialService {
             FactorialResult factorialResult = getFactorialResult(id);
             logger.info("Processing factorial {}", factorialResult.getId());
             BigInteger result = Factorial.calculate(factorialResult.getNumber());
-            factorialResult.setFactorial(result);
-            factorialResult.setStatus("DONE");
-            factorialResult.setWorker(worker);
-            factorialResult = repository.save(factorialResult);
+            repository.markAsDone(id, result, worker);
             logger.info("Factorial {} processed: {}", factorialResult.getId(), result);
             return Optional.of(factorialResult);
         } catch (Exception e) {
@@ -50,7 +47,7 @@ public class FactorialService {
     }
 
     private @NonNull FactorialResult getFactorialResult(Long id) {
-        Optional<FactorialResult> result = repository.findByIdForUpdate(id);
+        Optional<FactorialResult> result = repository.findById(id);
         if (result.isEmpty()) {
             throw new IllegalArgumentException("Factorial Result not found");
         }
