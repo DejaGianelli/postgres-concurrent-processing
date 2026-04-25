@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface FactorialResultRepository extends JpaRepository<FactorialResult, Long> {
 
@@ -29,6 +30,10 @@ public interface FactorialResultRepository extends JpaRepository<FactorialResult
             WHERE fr.id IN :ids
             """)
     void markAsProcessing(List<Long> ids);
+
+    @Query("SELECT fr FROM FactorialResult fr WHERE fr.id = :id")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<FactorialResult> findByIdForUpdate(Long id);
 
     @Modifying
     @Query("UPDATE FactorialResult fr SET fr.status = 'ERROR' WHERE fr.id = :id")

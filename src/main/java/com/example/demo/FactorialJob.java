@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -13,9 +14,11 @@ public class FactorialJob {
     private static final Logger logger = LoggerFactory.getLogger(FactorialJob.class);
 
     private final FactorialService service;
+    private final EntityManager entityManager;
 
-    public FactorialJob(FactorialService service) {
+    public FactorialJob(FactorialService service, EntityManager entityManager) {
         this.service = service;
+        this.entityManager = entityManager;
     }
 
     @Async
@@ -25,7 +28,10 @@ public class FactorialJob {
         logger.info("Starting process");
         List<Long> ids = service.lockItemsToProcess(batchSize);
         while (!ids.isEmpty()) {
-            service.process(ids, worker);
+            for (Long id : ids) {
+                var result = service.process(id, worker);
+                result.ifPresent(entityManager::detach);
+            }
             count = count + ids.size();
             ids = service.lockItemsToProcess(batchSize);
         }

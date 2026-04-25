@@ -1,6 +1,5 @@
 package com.example.demo;
 
-import jakarta.persistence.EntityManager;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +17,9 @@ public class FactorialService {
     private static final Logger logger = LoggerFactory.getLogger(FactorialService.class);
 
     private final FactorialResultRepository repository;
-    private final EntityManager entityManager;
 
-    public FactorialService(FactorialResultRepository repository,
-                            EntityManager entityManager) {
+    public FactorialService(FactorialResultRepository repository) {
         this.repository = repository;
-        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -33,31 +29,31 @@ public class FactorialService {
         return ids;
     }
 
-    public void process(List<Long> ids, String worker) {
-        for (Long id : ids) {
-            try {
-                FactorialResult factorialResult = getFactorialResult(id);
-                logger.info("Processing factorial {}", factorialResult.getId());
-                BigInteger result = Factorial.calculate(factorialResult.getNumber());
-                factorialResult.setFactorial(result);
-                factorialResult.setStatus("DONE");
-                factorialResult.setWorker(worker);
-                factorialResult = repository.save(factorialResult);
-                entityManager.detach(factorialResult);
-                logger.info("Factorial {} processed: {}", factorialResult.getId(), result);
-            } catch (Exception e) {
-                repository.markAsError(id);
-                logger.info("Error processing factorial {}. Error: {}", id,
-                        e.getMessage());
-            }
+    @Transactional
+    public Optional<FactorialResult> process(Long id, String worker) {
+        try {
+            FactorialResult factorialResult = getFactorialResult(id);
+            logger.info("Processing factorial {}", factorialResult.getId());
+            BigInteger result = Factorial.calculate(factorialResult.getNumber());
+            factorialResult.setFactorial(result);
+            factorialResult.setStatus("DONE");
+            factorialResult.setWorker(worker);
+            factorialResult = repository.save(factorialResult);
+            logger.info("Factorial {} processed: {}", factorialResult.getId(), result);
+            return Optional.of(factorialResult);
+        } catch (Exception e) {
+            repository.markAsError(id);
+            logger.info("Error processing factorial {}. Error: {}", id,
+                    e.getMessage());
+            return Optional.empty();
         }
     }
 
     private @NonNull FactorialResult getFactorialResult(Long id) {
-        Optional<FactorialResult> optional = repository.findById(id);
-        if (optional.isEmpty()) {
+        Optional<FactorialResult> result = repository.findByIdForUpdate(id);
+        if (result.isEmpty()) {
             throw new IllegalArgumentException("Factorial Result not found");
         }
-        return optional.get();
+        return result.get();
     }
 }
